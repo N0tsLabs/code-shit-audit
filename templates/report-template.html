@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light" data-style="C">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>代码审计报告 · WKEA-API</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* === Code Audit Report · Linear/Vercel 白皮书风 === */
+:root {
+  --bg: #FFFFFF;
+  --bg-alt: #FAFAFA;
+  --surface: #FFFFFF;
+  --surface-2: #F5F5F5;
+  --border: #E5E5E5;
+  --border-2: #EFEFEF;
+  --fg: #0A0A0A;
+  --text: #525252;
+  --text-2: #737373;
+  --text-3: #A3A3A3;
+  --primary: #0A0A0A;
+  --accent: #0066FF;
+  --accent-2: #0052CC;
+  --danger: #DC2626;
+  --warning: #D97706;
+  --caution: #CA8A04;
+  --info: #2563EB;
+  --success: #16A34A;
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --mono: 'JetBrains Mono', 'SF Mono', monospace;
+  --content-max: 880px;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+[data-theme="dark"] {
+  --bg: #0A0A0A;
+  --bg-alt: #111111;
+  --surface: #171717;
+  --surface-2: #1F1F1F;
+  --border: #2E2E2E;
+  --border-2: #262626;
+  --fg: #FAFAFA;
+  --text: #A3A3A3;
+  --text-2: #737373;
+  --text-3: #525252;
+  --primary: #FAFAFA;
+  --accent: #3B82F6;
+  --danger: #EF4444;
+  --warning: #F59E0B;
+  --info: #60A5FA;
+  --success: #22C55E;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 16px;
+  line-height: 1.7;
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background .2s, color .2s;
+  overflow-x: hidden;
+}
+code, pre { font-family: var(--mono); font-size: .85em; }
+
+.topnav {
+  position: fixed; top: 16px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px;
+  display: flex; gap: 2px; align-items: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
+  font-size: 13px;
+  font-weight: 500;
+  max-width: calc(100vw - 24px);
+  overflow-x: auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+[data-theme="dark"] .topnav { background: rgba(10,10,10,0.7); }
+.topnav::-webkit-scrollbar { display: none; }
+.topnav a {
+  padding: 6px 12px;
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--text);
+  white-space: nowrap;
+  transition: all .15s var(--ease);
+}
+.topnav a:hover { color: var(--fg); background: var(--surface-2); }
+.topnav a.active { color: var(--fg); background: var(--surface-2); }
+
+.tb {
+  position: fixed; top: 16px; right: 16px; z-index: 200;
+  height: 32px; padding: 0 12px;
+  border: 1px solid var(--border);
+  background: var(--surface); color: var(--text);
+  border-radius: 6px; cursor: pointer;
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 11.5px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  transition: all .15s var(--ease);
+}
+.tb:hover { color: var(--fg); border-color: var(--fg); }
+.tb svg { width: 12px; height: 12px; }
+
+.wrap { max-width: var(--content-max); margin: 0 auto; padding: 72px 24px 64px; }
+@media (max-width: 720px) { .wrap { padding: 64px 16px 48px; } }
+
+/* === Hero (Linear-style minimal) === */
+.hero { padding: 48px 0 56px; }
+.hero .meta-line {
+  display: flex; align-items: center; gap: 12px;
+  font-size: 13px; color: var(--text-2);
+  font-family: var(--mono);
+  margin-bottom: 20px; flex-wrap: wrap;
+}
+.hero .meta-line .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+.hero .meta-line .sep { color: var(--text-3); }
+.hero h1 { font-size: 40px; font-weight: 700; letter-spacing: -1.5px; line-height: 1.1; color: var(--fg); margin-bottom: 16px; }
+.hero h1 .accent { color: var(--text-2); font-weight: 500; }
+.hero .sub {
+  font-size: 17px; color: var(--text);
+  line-height: 1.6; margin-bottom: 32px; max-width: 600px;
+}
+.hero .grade-row {
+  display: inline-flex; align-items: center; gap: 14px;
+  padding: 10px 16px;
+  background: var(--bg-alt);
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+.hero .grade-row .gn { font-size: 18px; font-weight: 700; color: var(--danger); }
+.hero .grade-row .gl { color: var(--text); }
+.hero .grade-row .gs { color: var(--text-3); }
+
+/* === Project Overview Section === */
+.overview { margin: 0 0 56px; }
+.overview .grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  margin-top: 20px;
+}
+@media (max-width: 720px) { .overview .grid { grid-template-columns: 1fr; } }
+.ov-card {
+  background: var(--bg-alt);
+  border-radius: 8px;
+  padding: 18px 20px;
+}
+.ov-card.full { grid-column: 1 / -1; }
+.ov-card .lbl {
+  font-size: 10.5px; color: var(--text-2);
+  text-transform: uppercase; letter-spacing: 0.8px;
+  font-family: var(--mono); font-weight: 600;
+  margin-bottom: 8px;
+}
+.ov-card .ct {
+  font-size: 13.5px; color: var(--fg); line-height: 1.65;
+}
+.ov-card .ct b { color: var(--fg); font-weight: 600; }
+.ov-card ul { list-style: none; padding: 0; margin: 0; }
+.ov-card li {
+  font-size: 13px; color: var(--text); line-height: 1.85;
+  padding-left: 14px; position: relative;
+}
+.ov-card li::before {
+  content: ''; position: absolute; left: 0; top: 11px;
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--accent);
+}
+
+/* === KPI strip === */
+.kpi-strip {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 24px 0; margin: 0;
+}
+@media (max-width: 720px) { .kpi-strip { grid-template-columns: repeat(2, 1fr); gap: 20px; } }
+.kpi { padding: 0 20px; border-left: 1px solid var(--border-2); }
+.kpi:first-child { border-left: none; padding-left: 0; }
+.kpi .kl { font-size: 11.5px; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.8px; font-family: var(--mono); font-weight: 600; margin-bottom: 8px; }
+.kpi .kv { font-size: 30px; font-weight: 600; font-family: var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -0.5px; line-height: 1; color: var(--fg); }
+.kpi .ks { font-size: 12px; color: var(--text-3); margin-top: 6px; font-family: var(--mono); }
+
+/* === Section === */
+.sec { margin: 64px 0; }
+.sec-hdr { margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border-2); }
+.sec-hdr .label { font-family: var(--mono); font-size: 11.5px; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; margin-bottom: 6px; }
+.sec-hdr h2 { font-size: 24px; font-weight: 700; letter-spacing: -0.4px; line-height: 1.3; color: var(--fg); }
+.sec-hdr .desc { font-size: 14px; color: var(--text); margin-top: 6px; }
+
+.ai-sum { padding: 0; font-size: 16px; line-height: 1.8; }
+.ai-sum p { margin-bottom: 14px; color: var(--text); }
+.ai-sum p b { color: var(--fg); font-weight: 600; }
+
+.ai-note {
+  margin-top: 18px; padding: 14px 18px;
+  background: var(--bg-alt); border-radius: 6px;
+  font-size: 14px; color: var(--text); line-height: 1.7;
+}
+.ai-note .lbl { color: var(--text-2); font-family: var(--mono); font-size: 11px; margin-right: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+.cg { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 720px) { .cg { grid-template-columns: 1fr; } }
+.cc { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; display: flex; flex-direction: column; }
+.cc h4 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-2); font-family: var(--mono); margin-bottom: 14px; }
+.cc .chart-wrap { flex: 1; position: relative; width: 100%; height: 220px; }
+
+.gbox { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
+.gbox h4 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-2); font-family: var(--mono); margin-bottom: 4px; }
+.gbox .ghint { font-size: 12.5px; color: var(--text-2); margin-bottom: 14px; }
+#fg { width: 100%; height: 360px; border-radius: 6px; background: var(--bg-alt); position: relative; }
+.tip {
+  position: absolute; padding: 7px 11px;
+  background: var(--fg); color: var(--bg);
+  font-size: 11.5px; border-radius: 5px;
+  pointer-events: none; opacity: 0;
+  transition: opacity .12s; z-index: 300;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  max-width: 220px; line-height: 1.5;
+}
+.tip b { font-family: var(--mono); font-weight: 700; display: block; margin-bottom: 1px; }
+
+.contrib-list { display: flex; flex-direction: column; border-top: 1px solid var(--border-2); }
+.contrib-list .row { display: flex; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--border-2); }
+.contrib-list .row:last-child { border-bottom: none; }
+.contrib-list .rank { font-family: var(--mono); font-size: 12px; color: var(--text-3); width: 24px; text-align: right; }
+.contrib-list .name { font-size: 15px; font-weight: 500; color: var(--fg); flex: 1; }
+.contrib-list .bar-wrap { flex: 2; height: 6px; background: var(--bg-alt); border-radius: 3px; overflow: hidden; }
+.contrib-list .bar { height: 100%; background: var(--fg); border-radius: 3px; }
+.contrib-list .count { font-family: var(--mono); font-size: 12.5px; color: var(--text-2); min-width: 80px; text-align: right; }
+
+.issues-table { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+.issues-table table { width: 100%; border-collapse: collapse; }
+.issues-table th, .issues-table td { text-align: left; padding: 10px 0; border-bottom: 1px solid var(--border-2); font-size: 14px; }
+.issues-table tr:last-child td { border-bottom: none; }
+.issues-table th { font-size: 11px; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.8px; font-family: var(--mono); font-weight: 600; padding: 0 0 10px 0; border-bottom: 1px solid var(--border); }
+.issues-table td { color: var(--text); }
+.issues-table tr:hover td { color: var(--fg); }
+.ib { display: inline-block; font-family: var(--mono); font-weight: 700; font-size: 11px; padding: 2px 8px; border-radius: 3px; color: #fff; letter-spacing: 0.4px; min-width: 30px; text-align: center; }
+.b0 { background: var(--danger); }
+.b1 { background: var(--warning); }
+.b2 { background: var(--caution); }
+.b3 { background: var(--success); }
+.module-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.module-tag { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 4px; font-size: 12px; color: var(--text); font-family: var(--mono); }
+.module-tag .dot { width: 5px; height: 5px; border-radius: 50%; }
+.d0 { background: var(--danger); } .d1 { background: var(--warning); }
+.d2 { background: var(--caution); } .d3 { background: var(--success); }
+
+.il { display: flex; flex-direction: column; gap: 10px; }
+.ic {
+  background: var(--surface); border: 1px solid var(--border);
+  border-left: 3px solid var(--text-3);
+  border-radius: 4px; padding: 16px 20px;
+  display: flex; gap: 12px; align-items: flex-start;
+  transition: all .15s var(--ease);
+}
+.ic:hover { border-color: var(--text-2); }
+.ic.p0 { border-left-color: var(--danger); }
+.ic.p1 { border-left-color: var(--warning); }
+.ic.p2 { border-left-color: var(--caution); }
+.ic.p3 { border-left-color: var(--success); }
+.it { font-size: 15px; font-weight: 600; color: var(--fg); line-height: 1.4; }
+.im { font-size: 12px; color: var(--text-2); margin-top: 3px; display: flex; gap: 10px; flex-wrap: wrap; font-family: var(--mono); }
+.im code { background: var(--bg-alt); padding: 1px 5px; border-radius: 3px; }
+.ibo { font-size: 14px; color: var(--text); margin-top: 8px; line-height: 1.65; }
+.ibo code { font-size: 12.5px; background: var(--bg-alt); padding: 1px 4px; border-radius: 3px; }
+.iev { margin-top: 8px; padding: 10px 12px; background: var(--bg-alt); border-radius: 4px; font-size: 12px; color: var(--text); white-space: pre-wrap; line-height: 1.55; font-family: var(--mono); }
+.ix { margin-top: 8px; padding: 6px 12px; background: var(--bg-alt); border-left: 2px solid var(--accent); border-radius: 3px; font-size: 13px; color: var(--fg); }
+
+.dg { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 720px) { .dg { grid-template-columns: 1fr; } }
+.dc { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
+.dc h5 { font-size: 15px; font-weight: 600; margin-bottom: 8px; color: var(--fg); }
+.dc .meta { font-size: 13.5px; color: var(--text); margin-bottom: 10px; line-height: 1.7; }
+.dc .warn { padding: 7px 10px; background: rgba(220,38,38,0.05); border: 1px solid rgba(220,38,38,0.15); border-radius: 4px; font-size: 12px; color: var(--danger); font-family: var(--mono); margin-bottom: 10px; }
+
+.tdg { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 720px) { .tdg { grid-template-columns: 1fr; } }
+.br { display: flex; flex-direction: column; gap: 12px; padding: 4px 0; }
+.bh { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; font-family: var(--mono); }
+.bh .bl { color: var(--fg); }
+.bh .bv { color: var(--text-2); }
+.bt { height: 5px; background: var(--bg-alt); border-radius: 3px; overflow: hidden; }
+.bf { height: 100%; background: var(--fg); border-radius: 2px; }
+.kg { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 4px 0; }
+.kl { font-size: 11px; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.8px; font-family: var(--mono); font-weight: 600; }
+.kv { font-size: 24px; font-weight: 600; margin-top: 4px; font-family: var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -0.5px; color: var(--fg); }
+.ks { font-size: 11.5px; color: var(--text-3); margin-top: 2px; font-family: var(--mono); }
+
+.foot { margin-top: 80px; padding: 32px 0; border-top: 1px solid var(--border); text-align: center; font-size: 12px; color: var(--text-2); font-family: var(--mono); line-height: 1.7; }
+.foot b { color: var(--fg); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+  html { scroll-behavior: auto; }
+}
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <a href="#top" class="active" data-sec>总览</a>
+  <a href="#overview" data-sec>项目介绍</a>
+  <a href="#summary" data-sec>审计总结</a>
+  <a href="#stats" data-sec>指标</a>
+  <a href="#graph" data-sec>依赖</a>
+  <a href="#issues" data-sec>问题</a>
+  <a href="#domains" data-sec>领域</a>
+</nav>
+
+<button class="tb" onclick="toggleTheme()" aria-label="切换主题">
+  <svg id="ticon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  <span id="tlabel">深</span>
+</button>
+
+<div class="wrap">
+
+<!-- === Hero === -->
+<section class="hero" id="top">
+  <div class="meta-line">
+    <span class="dot"></span>
+    <span>WKEA-API</span>
+    <span class="sep">·</span>
+    <span>2026-07-03 12:15</span>
+    <span class="sep">·</span>
+    <span>Spring Boot 2.5.9 · Java 11</span>
+  </div>
+  <h1>代码审计报告<br><span class="accent">WKEA-API</span></h1>
+  <p class="sub">一份完整的项目评估报告。系统性地梳理项目结构、技术栈、业务领域和代码质量现状，并给出可操作的改进优先级。本报告分为<b>项目介绍</b>（了解项目）和<b>审计结论</b>（识别问题）两部分。</p>
+  <div class="grade-row">
+    <span class="gn">D</span>
+    <span class="gl">需重大改进</span>
+    <span class="gs">48 / 100</span>
+  </div>
+</section>
+
+<!-- === Project Overview === -->
+<section class="overview" id="overview">
+  <div class="sec-hdr">
+    <div class="label">00 — 项目介绍</div>
+    <h2>这是一个什么样的项目</h2>
+    <div class="desc">在不读代码的情况下，用 3 分钟理解 WKEA-API 的全貌。</div>
+  </div>
+
+  <div class="ov-card full">
+    <div class="lbl">一句话定位</div>
+    <div class="ct"><b>WKEA-API</b> 是一个面向<b>企业 B2B 采购与销售</b> 场景的电商后台系统，覆盖商品、订单、合同、仓储、对账、供应商等核心业务流程。技术栈采用 <b>Spring Boot 2.5.9 + MyBatis + MySQL + Redis + Elasticsearch</b>，对外提供 PC、H5、APP、Vendor 四个端的 API。</div>
+  </div>
+
+  <div class="grid">
+    <div class="ov-card">
+      <div class="lbl">核心业务模块</div>
+      <ul>
+        <li>商品中心：SPU/SKU、规格、属性、品牌、分类</li>
+        <li>订单链路：销售单、采购单、报价单、销售合同、拼单</li>
+        <li>需求与报价：需求单、报价单、自动化任务</li>
+        <li>仓储与库存：出入库、货架、商品库存、调拨</li>
+        <li>对账与发票：毛利、毛利更新、发票、应收回款</li>
+        <li>客户与供应商：档案、地址、银行、配送</li>
+        <li>在线客服：会话、消息、AI 集成（ChatGPT / DeepSeek）</li>
+        <li>微信公众号：消息模板、用户绑定、菜单</li>
+        <li>动态导出：通用 Excel / Word 模板导出（Apache POI）</li>
+        <li>自动化工作流：任务、步骤、日志</li>
+      </ul>
+    </div>
+    <div class="ov-card">
+      <div class="lbl">技术栈</div>
+      <ul>
+        <li>Java 11 + Spring Boot 2.5.9（Web、AOP、Validation）</li>
+        <li>MyBatis + MySQL + Druid 数据源</li>
+        <li>Redis（缓存、分布式锁、限流）</li>
+        <li>Elasticsearch 7.x（商品/订单搜索）</li>
+        <li>腾讯云 COS（文件存储）、STS 临时凭证</li>
+        <li>企业微信（消息推送、用户同步）</li>
+        <li>微信支付、支付宝支付（异步回调）</li>
+        <li>顺丰、快递 100 物流查询</li>
+        <li>Apache POI + POI-TL（Excel/Word 模板导出）</li>
+        <li>Shiro（权限认证）、Swagger（接口文档）</li>
+      </ul>
+    </div>
+    <div class="ov-card">
+      <div class="lbl">API 端划分</div>
+      <ul>
+        <li><b>pc</b> — PC 前台端（用户、订单、商品浏览）</li>
+        <li><b>app</b> — 移动 App 端</li>
+        <li><b>vendor</b> — 供应商端（报价、订单管理）</li>
+        <li><b>manage / managev2</b> — 管理后台 v1 与 v2（运营人员）</li>
+        <li><b>test</b> — 测试与工具端（含 WeDoc、企业微信回调）</li>
+      </ul>
+    </div>
+    <div class="ov-card">
+      <div class="lbl">关键数据规模</div>
+      <ul>
+        <li>Java 源文件 <b>3,076</b> 个</li>
+        <li>代码 <b>162,958</b> 行 + 注释 <b>37,756</b> 行（注释率 23.2%）</li>
+        <li>Git 提交 <b>9,675</b> 次 / 贡献者 <b>73</b> 位</li>
+        <li>SQL 映射 <b>257</b> 个、DTO/VO/Entity <b>1,647</b> 个</li>
+        <li>Maven 依赖 <b>45</b> 项、TODO/FIXME <b>469</b> 条</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- === KPI strip === -->
+<section class="sec" id="stats">
+  <div class="kpi-strip">
+    <div class="kpi"><div class="kl">源文件</div><div class="kv counter" data-target="3076">0</div><div class="ks">Java 文件</div></div>
+    <div class="kpi"><div class="kl">代码行</div><div class="kv counter" data-target="162958">0</div><div class="ks">纯逻辑</div></div>
+    <div class="kpi"><div class="kl">注释行</div><div class="kv counter" data-target="37756">0</div><div class="ks">23.2% 占比</div></div>
+    <div class="kpi"><div class="kl">提交数</div><div class="kv counter" data-target="9675">0</div><div class="ks">9 年历史</div></div>
+  </div>
+  <div style="height:24px"></div>
+  <div class="kpi-strip">
+    <div class="kpi"><div class="kl">贡献者</div><div class="kv counter" data-target="73">0</div><div class="ks">团队规模</div></div>
+    <div class="kpi"><div class="kl">Maven 依赖</div><div class="kv counter" data-target="45">0</div><div class="ks">pom.xml</div></div>
+    <div class="kpi"><div class="kl">TODO/FIXME</div><div class="kv counter" data-target="469">0</div><div class="ks">技术债务</div></div>
+    <div class="kpi"><div class="kl">检出问题</div><div class="kv counter" data-target="15">0</div><div class="ks">抽样审计</div></div>
+  </div>
+</section>
+
+<!-- === Summary === -->
+<section class="sec" id="summary">
+  <div class="sec-hdr">
+    <div class="label">01 — 审计总结</div>
+    <h2>整体评估</h2>
+    <div class="desc">先给结论，再看细节。</div>
+  </div>
+  <div class="ai-sum">
+    <p>WKEA-API 是一个典型的<b>业务驱动、快速迭代</b>的电商类系统。9,675 次提交、73 位贡献者说明团队规模可观且开发活跃，但代码质量管理和架构纪律未能跟上业务扩张速度。</p>
+    <p><b>最严重的问题：</b>腾讯云 COS 密钥以明文形式硬编码在 Controller 中并提交到 Git 仓库——这是不可接受的安全风险，意味着任何能访问代码的人都能完全控制你们的云资源。</p>
+    <p><b>结构性风险：</b>Controller 层普遍存在 Mapper 直接注入（3 个 Controller、十几个 Mapper 引用）；Service 层出现<b>300KB+ 的 God 类</b>（DemandQuotationServiceImpl 338KB、SalesServiceImpl 165KB），单一职责被严重违反，是未来维护的定时炸弹。</p>
+    <p><b>代码一致性：</b>API 版本管理混乱（5 种包结构并存：manage/managev2/pc/app/vendor）、方法命名风格混用、46+ 处注释死代码未清理——说明缺乏统一的编码规范和落地执行。这是流程问题，不是个人问题。</p>
+    <p><b>积极面：</b>多数 Controller 职责清晰（100-300 行，委托给 Service），有统一的响应格式（ResponseResult）和 Swagger 文档化习惯，并非全盘是屎山。</p>
+  </div>
+</section>
+
+<!-- === Charts === -->
+<section class="sec">
+  <div class="sec-hdr">
+    <div class="label">02 — 构成</div>
+    <h2>代码构成</h2>
+  </div>
+  <div class="cg">
+    <div class="cc"><h4>代码 / 注释 / 空白</h4><div class="chart-wrap"><canvas id="c1"></canvas></div></div>
+    <div class="cc"><h4>包分布</h4><div class="chart-wrap"><canvas id="c2"></canvas></div></div>
+  </div>
+  <div class="cg" style="margin-top:12px">
+    <div class="cc"><h4>审计维度</h4><div class="chart-wrap"><canvas id="c3"></canvas></div></div>
+    <div class="cc"><h4>问题严重级别</h4><div class="chart-wrap"><canvas id="c4"></canvas></div></div>
+  </div>
+</section>
+
+<!-- === Force graph === -->
+<section class="sec" id="graph">
+  <div class="sec-hdr">
+    <div class="label">03 — 架构</div>
+    <h2>模块依赖关系</h2>
+  </div>
+  <div class="gbox">
+    <h4>依赖图谱</h4>
+    <p class="ghint">节点面积 ∝ 文件数 · 连线 = 包依赖 · 拖拽缩放、悬停查看</p>
+    <div id="fg"></div>
+  </div>
+</section>
+
+<!-- === Contributors === -->
+<section class="sec">
+  <div class="sec-hdr">
+    <div class="label">04 — 团队</div>
+    <h2>贡献者</h2>
+  </div>
+  <div class="contrib-list">
+    <div class="row"><div class="rank">01</div><div class="name">N0ts</div><div class="bar-wrap"><div class="bar" style="width:100%"></div></div><div class="count">3,444 次</div></div>
+    <div class="row"><div class="rank">02</div><div class="name">hhh</div><div class="bar-wrap"><div class="bar" style="width:44%"></div></div><div class="count">1,507 次</div></div>
+    <div class="row"><div class="rank">03</div><div class="name">DJJ</div><div class="bar-wrap"><div class="bar" style="width:38%"></div></div><div class="count">1,316 次</div></div>
+    <div class="row"><div class="rank">04</div><div class="name">nctpp</div><div class="bar-wrap"><div class="bar" style="width:26%"></div></div><div class="count">892 次</div></div>
+    <div class="row"><div class="rank">05</div><div class="name">qy</div><div class="bar-wrap"><div class="bar" style="width:6%"></div></div><div class="count">197 次</div></div>
+    <div class="row"><div class="rank">06</div><div class="name">DJ</div><div class="bar-wrap"><div class="bar" style="width:5%"></div></div><div class="count">158 次</div></div>
+  </div>
+</section>
+
+<!-- === Issues === -->
+<section class="sec" id="issues">
+  <div class="sec-hdr">
+    <div class="label">05 — 重点</div>
+    <h2>问题清单</h2>
+    <div class="desc">共 15 个问题，P0 必须立即处理。</div>
+  </div>
+  <div class="issues-table">
+    <table>
+      <thead><tr><th>级别</th><th>含义</th><th>数量</th><th>占比</th></tr></thead>
+      <tbody>
+        <tr><td><span class="ib b0">P0</span></td><td>阻塞性，必须立即修复</td><td>1</td><td>7%</td></tr>
+        <tr><td><span class="ib b1">P1</span></td><td>严重，强烈建议修复</td><td>4</td><td>27%</td></tr>
+        <tr><td><span class="ib b2">P2</span></td><td>一般，建议修复</td><td>6</td><td>40%</td></tr>
+        <tr><td><span class="ib b3">P3</span></td><td>轻微，可暂缓</td><td>4</td><td>27%</td></tr>
+        <tr style="font-weight:600"><td>合计</td><td></td><td>15</td><td>100%</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="module-row">
+    <span class="module-tag"><span class="dot d0"></span>cos</span>
+    <span class="module-tag"><span class="dot d1"></span>customer</span>
+    <span class="module-tag"><span class="dot d1"></span>product</span>
+    <span class="module-tag"><span class="dot d2"></span>search</span>
+    <span class="module-tag"><span class="dot d2"></span>sales</span>
+    <span class="module-tag"><span class="dot d2"></span>pay</span>
+    <span class="module-tag"><span class="dot d2"></span>global</span>
+  </div>
+</section>
+
+<!-- === P0 === -->
+<section class="sec" id="p0">
+  <div class="sec-hdr">
+    <div class="label">P0 — 阻塞</div>
+    <h2>必须立即修复</h2>
+    <div class="desc">1 个阻塞性问题，必须立即处理。</div>
+  </div>
+  <div class="ai-note"><span class="lbl">AI:</span>云密钥以明文硬编码并提交到 Git = 任何能访问代码的人（含离职员工、外部合作方）都能获得腾讯云 COS 的完全控制权。修复后务必：①立即轮换密钥 ②排查可疑访问记录 ③建立 Git Hooks 或 CI 密钥检测机制。</div>
+  <div class="il">
+    <div class="ic p0">
+      <span class="ib b0">P0</span>
+      <div style="flex:1;min-width:0">
+        <div class="it">腾讯云 COS 密钥硬编码在 Controller</div>
+        <div class="im"><code>CosEcController.java:39</code> · cos · SEC-001</div>
+        <div class="ibo"><code>secretId</code> 和 <code>secretKey</code> 以静态常量明文写在 Java 文件中，任何能访问代码的人均可获取腾讯云 COS 的完全控制权。</div>
+        <div class="iev">L39: private static final String secretId = "{{COS_SECRET_ID_REDACTED}}";
+L40: private static final String secretKey = "{{COS_SECRET_KEY_REDACTED}}";
+// 真实密钥绝对不能出现在模板或仓库中，模板仅展示代码结构</div>
+        <div class="ix">立即轮换密钥，从 application.yml / 环境变量 / 配置中心读取</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- === P1 === -->
+<section class="sec" id="p1">
+  <div class="sec-hdr">
+    <div class="label">P1 — 严重</div>
+    <h2>结构性风险</h2>
+    <div class="desc">4 个严重问题，影响可维护性。</div>
+  </div>
+  <div class="ai-note"><span class="lbl">AI:</span>Controller 直接注入 Mapper 是"赶工期"产物——快捷查询没经过 Service 层。两个 God 类（338KB + 165KB）说明"能跑就行"心态——一个文件塞了订单、物流、财务、消息推送四个领域。拆分这两个文件应是下一阶段重构的 P0 任务。</div>
+  <div class="il">
+    <div class="ic p1"><span class="ib b1">P1</span><div style="flex:1;min-width:0"><div class="it">Controller 直接注入 Mapper</div><div class="im"><code>CustomerEcController.java:32-34</code> · customer</div><div class="ix">封装到 Service</div></div></div>
+    <div class="ic p1"><span class="ib b1">P1</span><div style="flex:1;min-width:0"><div class="it">ProductSpecV2Controller 注入 8 个 Mapper</div><div class="im"><code>ProductSpecV2Controller</code> · product</div><div class="ix">全部收归 Service</div></div></div>
+    <div class="ic p1"><span class="ib b1">P1</span><div style="flex:1;min-width:0"><div class="it">SalesServiceImpl 超 3,000 行</div><div class="im"><code>SalesServiceImpl.java</code> · 165KB · sales</div><div class="ix">按业务领域拆分</div></div></div>
+    <div class="ic p1"><span class="ib b1">P1</span><div style="flex:1;min-width:0"><div class="it">DemandQuotationServiceImpl 338KB</div><div class="im"><code>DemandQuotationServiceImpl.java</code> · demand</div><div class="ix">按职责拆分</div></div></div>
+  </div>
+</section>
+
+<!-- === P2 === -->
+<section class="sec" id="p2">
+  <div class="sec-hdr">
+    <div class="label">P2 — 一般</div>
+    <h2>建议修复</h2>
+  </div>
+  <div class="ai-note"><span class="lbl">AI:</span>new ExecutorService() 在 Controller、注释的死代码、命名风格混用、5 种 API 包结构——单个看不致命，合起来说明缺少代码审查流程。</div>
+  <div class="il">
+    <div class="ic p2"><span class="ib b2">P2</span><div style="flex:1;min-width:0"><div class="it">Controller 管理线程池</div><div class="im"><code>ProductSearchController.java:100-113</code> · search</div><div class="ix">封装到 Service</div></div></div>
+    <div class="ic p2"><span class="ib b2">P2</span><div style="flex:1;min-width:0"><div class="it">注释掉的死代码</div><div class="im"><code>PayController.java:58-77</code> · pay</div><div class="ix">确认无用则删除</div></div></div>
+    <div class="ic p2"><span class="ib b2">P2</span><div style="flex:1;min-width:0"><div class="it">方法命名风格混用</div><div class="im"><code>ProductSearchController</code> · search</div><div class="ix">统一驼峰命名</div></div></div>
+    <div class="ic p2"><span class="ib b2">P2</span><div style="flex:1;min-width:0"><div class="it">API 版本管理混乱</div><div class="im">全局 · CROSS-001</div><div class="ix">统一版本策略</div></div></div>
+    <div class="ic p2"><span class="ib b2">P2</span><div style="flex:1;min-width:0"><div class="it">Controller 直接暴露 DB 查询</div><div class="im"><code>CustomerEcController.java:55-61</code> · customer</div><div class="ix">通过 DTO 脱敏</div></div></div>
+    <div class="ic p2"><span class="ib b2">P2</span><div style="flex:1;min-width:0"><div class="it">ProductSearchController 死代码</div><div class="im"><code>ProductSearchController.java:57-62</code> · search</div><div class="ix">删除</div></div></div>
+  </div>
+</section>
+
+<!-- === P3 === -->
+<section class="sec">
+  <div class="sec-hdr">
+    <div class="label">P3 — 轻微</div>
+    <h2>可暂缓</h2>
+  </div>
+  <div class="il">
+    <div class="ic p3"><span class="ib b3">P3</span><div style="flex:1;min-width:0"><div class="it">测试接口未 @Deprecated</div><div class="im"><code>ProductSearchController.java:86</code> · search</div><div class="ix">@Deprecated 或移到 test 包</div></div></div>
+    <div class="ic p3"><span class="ib b3">P3</span><div style="flex:1;min-width:0"><div class="it">空值处理不明确</div><div class="im"><code>CustomerEcController.java:60</code> · customer</div><div class="ix">明确空结果标识</div></div></div>
+    <div class="ic p3"><span class="ib b3">P3</span><div style="flex:1;min-width:0"><div class="it">REST 路径风格不一致</div><div class="im"><code>CustomerEcController</code> · customer</div><div class="ix">统一 RESTful</div></div></div>
+  </div>
+</section>
+
+<!-- === Domains === -->
+<section class="sec" id="domains">
+  <div class="sec-hdr">
+    <div class="label">06 — 业务</div>
+    <h2>业务领域</h2>
+  </div>
+  <div class="dg">
+    <div class="dc">
+      <h5>订单领域</h5>
+      <div class="meta">浏览 → 购物车 → 下单 → 支付 → 发货 → 评价<br>~20 个文件 · SalesOrderController + ShoppingCartController + PayController</div>
+      <div class="warn">⚠ SalesServiceImpl 3,271 行 — 典型 God 类</div>
+      <div class="ai-note"><span class="lbl">AI:</span>订单是电商核心链路，逻辑基本集中在 Service 层，Controller 较薄，结构合理。核心问题在于 SalesServiceImpl 单文件承载订单+物流+财务等多领域逻辑，重构优先级最高。</div>
+    </div>
+    <div class="dc">
+      <h5>商品领域</h5>
+      <div class="meta">SPU/SKU → 规格 → ES 搜索 → 收藏<br>~15 个文件 · ProductSpuController + ProductSearchController + EsService</div>
+      <div class="warn">⚠ ProductSpecV2Controller 注入 8 个 Mapper</div>
+      <div class="ai-note"><span class="lbl">AI:</span>商品管理涉及搜索、规格、品牌、分类等多个子领域，业务复杂度高。最大架构问题是 ProductSpecV2Controller 的 Mapper 注入泛滥和生产代码混入测试接口。</div>
+    </div>
+  </div>
+</section>
+
+<!-- === Tech debt === -->
+<section class="sec">
+  <div class="sec-hdr">
+    <div class="label">07 — 总结</div>
+    <h2>技术债务</h2>
+  </div>
+  <div class="tdg">
+    <div class="cc"><h4>各层文件占比</h4>
+      <div class="br">
+        <div class="bh"><span class="bl">model (DTO/VO/Entity)</span><span class="bv">54% · 1,647</span></div><div class="bt"><div class="bf" style="width:54%"></div></div>
+        <div class="bh"><span class="bl">service</span><span class="bv">18% · 558</span></div><div class="bt"><div class="bf" style="width:18%"></div></div>
+        <div class="bh"><span class="bl">commons</span><span class="bv">10% · 311</span></div><div class="bt"><div class="bf" style="width:10%"></div></div>
+        <div class="bh"><span class="bl">mapper</span><span class="bv">8% · 257</span></div><div class="bt"><div class="bf" style="width:8%"></div></div>
+        <div class="bh"><span class="bl">controller</span><span class="bv">8% · 253</span></div><div class="bt"><div class="bf" style="width:8%"></div></div>
+      </div>
+    </div>
+    <div class="cc"><h4>关键指标</h4>
+      <div class="kg">
+        <div><div class="kl">源文件</div><div class="kv counter" data-target="3076">0</div><div class="ks">Java</div></div>
+        <div><div class="kl">注释率</div><div class="kv counter" data-target="23.2">0</div><div class="ks">37,756 / 162,958</div></div>
+        <div><div class="kl">TODO/FIXME</div><div class="kv counter" data-target="469">0</div><div class="ks">技术债务</div></div>
+        <div><div class="kl">项目规模</div><div class="kv counter" data-target="311">0</div><div class="ks">K 行</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="foot">
+  <p>由 <b>code-shit-audit</b> 生成 · WKEA-API</p>
+  <p>Spring Boot 2.5.9 · Java 11 · 抽样范围: controller/pc + managev2 + key Service</p>
+  <p>2026-07-03 12:15 UTC+8 · 数据源: tokei · git · 静态分析</p>
+</footer>
+
+</div>
+
+<div class="tip" id="tip"></div>
+
+<script>
+const root = document.documentElement;
+const tIcon = document.getElementById('ticon');
+const tLabel = document.getElementById('tlabel');
+const sunIcon = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+const moonIcon = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+function updateTog() {
+  const dark = root.getAttribute('data-theme')==='dark';
+  tIcon.innerHTML = dark ? sunIcon : moonIcon;
+  if(tLabel) tLabel.textContent = dark ? '浅' : '深';
+}
+function toggleTheme() {
+  root.setAttribute('data-theme', root.getAttribute('data-theme')==='dark' ? 'light' : 'dark');
+  updateTog(); renderCharts(); refreshGraphColors();
+}
+updateTog();
+
+function animateCounter(el) {
+  const target = parseFloat(el.dataset.target);
+  const isDec = target % 1 !== 0;
+  const start = performance.now();
+  const dur = 1100;
+  function tick(now) {
+    const p = Math.min((now-start)/dur, 1);
+    const e = 1 - Math.pow(1-p, 3);
+    el.textContent = isDec ? (target*e).toFixed(1) : Math.round(target*e).toLocaleString();
+    if(p<1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+function runCounters() {
+  document.querySelectorAll('.counter').forEach(el => {
+    if (el.dataset.animated) return;
+    el.dataset.animated = '1';
+    animateCounter(el);
+  });
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', runCounters);
+else runCounters();
+
+const navItems = document.querySelectorAll('[data-sec]');
+const sections = document.querySelectorAll('.sec[id], .overview[id], #top');
+let activeId = 'top';
+function onScroll() {
+  const y = window.scrollY + 100;
+  let cur = 'top';
+  sections.forEach(s => { if (s.offsetTop <= y) cur = s.id; });
+  if (cur !== activeId) {
+    activeId = cur;
+    navItems.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + cur));
+  }
+}
+window.addEventListener('scroll', onScroll, {passive: true});
+onScroll();
+
+const css = () => getComputedStyle(root);
+const g = k => css().getPropertyValue(k).trim();
+let chartInstances = [];
+function renderCharts() {
+  chartInstances.forEach(c => { try { c.destroy(); } catch(e) {} });
+  chartInstances = [];
+  const fg = g('--fg'), text = g('--text'), text2 = g('--text-2'), text3 = g('--text-3'),
+        surface = g('--bg'), border = g('--border');
+  const primary = g('--primary'), accent = g('--accent'), info = g('--info'),
+        warning = g('--warning'), caution = g('--caution'), danger = g('--danger'),
+        success = g('--success');
+  const mono = g('--mono');
+  Chart.defaults.font.family = mono;
+  Chart.defaults.color = text2;
+  function C(id, cfg) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    chartInstances.push(new Chart(el.getContext('2d'), cfg));
+  }
+  C('c1', {type:'doughnut', data:{labels:['代码 162,958','注释 37,756','空白 39,956'],
+    datasets:[{data:[162958,37756,39956],backgroundColor:[fg,accent,text3],borderColor:surface,borderWidth:2,hoverOffset:6}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'72%',plugins:{legend:{position:'bottom',labels:{color:text,padding:14,usePointStyle:true,font:{size:11}}}}}});
+  C('c2', {type:'doughnut', data:{labels:['model 1,647','service 558','commons 311','mapper 257','controller 253','其他 50'],
+    datasets:[{data:[1647,558,311,257,253,50],backgroundColor:[info,primary,warning,caution,danger,text3],borderColor:surface,borderWidth:2,hoverOffset:6}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'68%',plugins:{legend:{position:'bottom',labels:{color:text,padding:14,usePointStyle:true,font:{size:11}}}}}});
+  C('c3', {type:'radar', data:{labels:['架构','可维护','业务','安全','一致性'],
+    datasets:[{label:'评分',data:[55,40,55,70,45],backgroundColor:'rgba(0,0,0,0.04)',borderColor:fg,borderWidth:1.5,pointBackgroundColor:fg,pointRadius:3,pointBorderColor:surface,pointBorderWidth:1}]},
+    options:{responsive:true,maintainAspectRatio:false,scales:{r:{min:0,max:100,ticks:{color:text3,backdropColor:'transparent',stepSize:20,font:{size:9}},grid:{color:border},angleLines:{color:border},pointLabels:{color:text,font:{size:11}}}},plugins:{legend:{display:false}}}});
+  C('c4', {type:'bar', data:{labels:['P0','P1','P2','P3'],
+    datasets:[{label:'问题',data:[1,4,6,4],backgroundColor:[danger,warning,caution,success],borderRadius:4,borderSkipped:false,barThickness:32}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{color:text3,stepSize:1,precision:0,font:{size:10}},grid:{color:border}},x:{ticks:{color:text2,font:{size:11}},grid:{display:false}}}}});
+}
+function tryRenderCharts() {
+  const c = document.getElementById('c1');
+  if (c && c.clientWidth > 0 && c.clientHeight > 0) renderCharts();
+  else requestAnimationFrame(tryRenderCharts);
+}
+window.addEventListener('load', tryRenderCharts);
+window.addEventListener('resize', () => { if(chartInstances.length) renderCharts(); });
+
+const tip = d3.select('#tip');
+const layerColor = id => ['controller','service','mapper','model','commons'].includes(id) ? g('--text-3') : g('--fg');
+const gd = {
+  nodes: [
+    {id:'controller',files:253,label:'Controller',detail:'253 文件 · API 入口',c:layerColor('controller')},
+    {id:'service',files:558,label:'Service',detail:'558 文件 · 业务逻辑',c:layerColor('service')},
+    {id:'mapper',files:257,label:'Mapper',detail:'257 文件 · MyBatis',c:layerColor('mapper')},
+    {id:'model',files:1647,label:'Model',detail:'1,647 文件 · DTO/VO/Entity',c:layerColor('model')},
+    {id:'commons',files:311,label:'Commons',detail:'311 文件 · 工具/配置',c:layerColor('commons')},
+    {id:'order',files:80,label:'order',detail:'80 文件',c:layerColor('order')},
+    {id:'product',files:120,label:'product',detail:'120 文件',c:layerColor('product')},
+    {id:'customer',files:65,label:'customer',detail:'65 文件',c:layerColor('customer')},
+    {id:'supply',files:45,label:'supply',detail:'45 文件',c:layerColor('supply')},
+    {id:'warehouse',files:20,label:'warehouse',detail:'20 文件',c:layerColor('warehouse')},
+    {id:'finance',files:15,label:'finance',detail:'15 文件',c:layerColor('finance')},
+    {id:'system',files:55,label:'system',detail:'55 文件',c:layerColor('system')}
+  ],
+  links: [
+    {source:'controller',target:'service'},{source:'controller',target:'mapper'},
+    {source:'service',target:'mapper'},{source:'service',target:'model'},
+    {source:'mapper',target:'model'},{source:'commons',target:'service'},
+    {source:'commons',target:'controller'},{source:'controller',target:'order'},
+    {source:'controller',target:'product'},{source:'controller',target:'customer'},
+    {source:'controller',target:'supply'},{source:'service',target:'order'},
+    {source:'service',target:'product'},{source:'service',target:'customer'},
+    {source:'service',target:'warehouse'},{source:'service',target:'finance'},
+    {source:'service',target:'system'},{source:'service','target':'supply'}
+  ]
+};
+const fg = document.getElementById('fg');
+const gw = () => fg.clientWidth;
+const gh = 360;
+const svg = d3.select('#fg').append('svg').attr('width', gw()).attr('height', gh);
+const gg = svg.append('g');
+svg.call(d3.zoom().scaleExtent([0.3, 3]).on('zoom', e => gg.attr('transform', e.transform)));
+const sim = d3.forceSimulation(gd.nodes)
+  .force('link', d3.forceLink(gd.links).id(d => d.id).distance(85))
+  .force('charge', d3.forceManyBody().strength(-220))
+  .force('center', d3.forceCenter(gw()/2, gh/2))
+  .force('collision', d3.forceCollide().radius(d => Math.sqrt(d.files)*1.7+6));
+gg.append('g').selectAll('line').data(gd.links).join('line')
+  .attr('stroke', g('--border')).attr('stroke-width', 1).attr('stroke-opacity', 0.8);
+const nd = gg.append('g').selectAll('g').data(gd.nodes).join('g')
+  .call(d3.drag().on('start', (e,d)=>{if(!e.active) sim.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y;})
+  .on('drag', (e,d)=>{d.fx=e.x; d.fy=e.y;})
+  .on('end', (e,d)=>{if(!e.active) sim.alphaTarget(0); d.fx=null; d.fy=null;}));
+nd.append('circle').attr('r', d => Math.sqrt(d.files)*1.7)
+  .attr('fill', d => d.c).attr('opacity', 0.85)
+  .attr('stroke', g('--bg')).attr('stroke-width', 1).style('cursor','pointer')
+  .on('mouseover', (e,d) => { tip.style('opacity',1).html(`<b>${d.label}</b>${d.detail}`).style('left',(e.pageX+12)+'px').style('top',(e.pageY-32)+'px'); })
+  .on('mouseout', () => tip.style('opacity',0));
+nd.append('text').text(d => d.label).attr('text-anchor','middle')
+  .attr('dy', d => Math.sqrt(d.files)*1.7+11).attr('fill', g('--text'))
+  .attr('font-size','10px').attr('font-weight','500').style('pointer-events','none');
+sim.on('tick', () => {
+  gg.selectAll('line').attr('x1', d=>d.source.x).attr('y1', d=>d.source.y).attr('x2', d=>d.target.x).attr('y2', d=>d.target.y);
+  nd.attr('transform', d => `translate(${d.x},${d.y})`);
+});
+window.addEventListener('resize', () => { svg.attr('width', gw()); sim.force('center', d3.forceCenter(gw()/2, gh/2)); sim.alpha(0.3).restart(); });
+function refreshGraphColors() {
+  gg.selectAll('line').attr('stroke', g('--border'));
+  nd.selectAll('circle').attr('stroke', g('--bg'));
+  nd.selectAll('text').attr('fill', g('--text'));
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+# code-shit-audit output (generated during audit runs)
+.shit-audit/
+
+# OS files
+.DS_Store
+Thumbs.db
