@@ -8,6 +8,14 @@
 请把 https://github.com/N0tsLabs/code-shit-audit.git 克隆到你的 skills 目录
 ```
 
+## 更新（告诉你的 AI 以下内容）
+
+```
+去 code-shit-audit 目录执行 git pull
+```
+
+每次运行前自动 pull 一下，确保使用的总是最新版本。
+
 ## 使用（告诉你的 AI 以下内容）
 
 ```
