@@ -118,7 +118,8 @@ code, pre { font-family: var(--mono); font-size: .85em; }
 @media (max-width: 720px) { .wrap { padding: 64px 16px 48px; } }
 
 /* === Hero (Linear-style minimal) === */
-.hero { padding: 56px 48px 40px; border-bottom: 1px solid var(--border); }
+.hero { padding: 56px 48px 40px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; gap: 40px; }
+.hero .hero-l { flex: 1; min-width: 0; }
 .hero .meta-line {
   display: flex; align-items: center; gap: 12px;
   font-size: 13px; color: var(--text-2);
@@ -334,6 +335,7 @@ details summary { outline: none; }
 
 <!-- === Hero === -->
 <section class="hero" id="top">
+  <div class="hero-l">
   <div class="meta-line">
     <span class="dot"></span>
     <span>WKEA-API</span>
@@ -344,6 +346,7 @@ details summary { outline: none; }
   </div>
   <h1>代码审计报告<br><span class="accent">WKEA-API</span></h1>
   <p class="sub">3,076 个 Java 文件、162,958 行代码、9,675 次提交、73 位贡献者。14 年迭代的 B2B 电商后台系统。本次审计识别出 <b>16 个问题</b>，其中 <b>1 个阻塞级安全漏洞</b>、<b>5 个严重架构风险</b>。</p>
+  </div>
   <div class="grade-row">
     <span class="gn">D</span>
     <span class="gl">需重大改进</span>
