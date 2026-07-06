@@ -359,7 +359,7 @@ details summary { outline: none; }
   <div class="sec-hdr">
     <div class="label">00 — 项目介绍</div>
     <h2>这是一个什么样的项目</h2>
-    <div class="desc">在不读代码的情况下，用 3 分钟理解 WKEA-API 的全貌。</div>
+    <div class="desc">3 分钟理解 WKEA-API 的全貌：业务模块、技术栈、API 端、数据规模。</div>
   </div>
 
   <div class="ov-card full">
@@ -443,7 +443,7 @@ details summary { outline: none; }
   <div class="sec-hdr">
     <div class="label">01 — 审计总结</div>
     <h2>整体评估</h2>
-    <div class="desc">先给结论，再看细节。</div>
+    <div class="desc">先给结论再看细节，16 个问题，2 个 P0。</div>
   </div>
   <div class="ai-sum">
     <p>WKEA-API 是 2014 年开始的 B2B 电商后台系统。9,675 次提交、73 位贡献者说明团队规模大、迭代活跃，但<b>架构纪律跟不上业务速度</b>。</p>
@@ -457,9 +457,9 @@ details summary { outline: none; }
 <!-- === Module Audit Results === -->
 <section class="sec" id="module-audit" style="margin-top:56px">
   <div class="sec-hdr">
-    <div class="label">02 — 模块审计</div>
+    <div class="label">02 — 模块审计结果</div>
     <h2>模块审计结果</h2>
-    <div class="desc">按模块逐一审查，列示每个模块的问题数和业务解读。</div>
+    <div class="desc">每个模块逐一审查，列示问题数和业务解读。</div>
   </div>
 
   <!-- Module Overview Strip -->
@@ -550,7 +550,7 @@ details summary { outline: none; }
 <!-- === Charts === -->
 <section class="sec">
   <div class="sec-hdr">
-    <div class="label">02 — 构成</div>
+    <div class="label">03 — 代码构成</div>
     <h2>代码构成</h2>
   </div>
   <div class="cg">
@@ -566,7 +566,7 @@ details summary { outline: none; }
 <!-- === Force graph === -->
 <section class="sec" id="graph">
   <div class="sec-hdr">
-    <div class="label">03 — 架构</div>
+    <div class="label">04 — 模块依赖</div>
     <h2>模块依赖关系</h2>
     <div class="desc">模块间调用链（业务数据流方向）</div>
   </div>
@@ -607,7 +607,7 @@ details summary { outline: none; }
 <!-- === Issues === -->
 <section class="sec" id="issues">
   <div class="sec-hdr">
-    <div class="label">05 — 重点</div>
+    <div class="label">06 — 问题清单</div>
     <h2>问题清单</h2>
     <div class="desc">共 16 个问题，P0 必须立即处理。</div>
   </div>
@@ -639,7 +639,7 @@ details summary { outline: none; }
   <div class="sec-hdr">
     <div class="label">P0 — 阻塞</div>
     <h2>必须立即修复</h2>
-    <div class="desc">1 个阻塞性问题（硬编码密钥），必须立即处理。</div>
+    <div class="desc">1 个阻塞性问题：腾讯云 COS 密钥硬编码在代码中。</div>
   </div>
   <div class="ai-note"><span class="lbl">AI:</span>云密钥以明文硬编码并提交到 Git = 任何能访问代码的人（含离职员工、外部合作方）都能获得腾讯云 COS 的完全控制权。修复后务必：①立即轮换密钥 ②排查可疑访问记录 ③建立 Git Hooks 或 CI 密钥检测机制。</div>
   <div class="il">
@@ -663,7 +663,7 @@ L40: private static final String secretKey = "{{COS_SECRET_KEY_REDACTED}}";
   <div class="sec-hdr">
     <div class="label">P1 — 严重</div>
     <h2>结构性风险</h2>
-    <div class="desc">5 个严重问题，影响架构和可维护性。</div>
+    <div class="desc">5 个严重架构问题：Controller 注入 Mapper + God 类。</div>
   </div>
   <div class="ai-note"><span class="lbl">AI:</span>Controller 直接注入 Mapper 是项目最普遍的架构违规模式——5 个 Controller 共注入 64+ 个 Mapper 引用，其中 AutomationTaskController(18)、NctppController(16)、N0tsController(13) 最为严重。两个 God 类(DemandQuotationServiceImpl 338KB + SalesServiceImpl 165KB)承载了订单、物流、财务、消息推送等不相关领域，"能跑就行"心态明显。</div>
   <div class="il">
@@ -708,7 +708,7 @@ L40: private static final String secretKey = "{{COS_SECRET_KEY_REDACTED}}";
 <!-- === Domains === -->
 <section class="sec" id="domains">
   <div class="sec-hdr">
-    <div class="label">06 — 业务</div>
+    <div class="label">07 — 业务领域</div>
     <h2>业务领域</h2>
   </div>
   <div class="dg">
@@ -730,7 +730,7 @@ L40: private static final String secretKey = "{{COS_SECRET_KEY_REDACTED}}";
 <!-- === Improvement Roadmap === -->
 <section class="sec">
   <div class="sec-hdr">
-    <div class="label">07 — 路线图</div>
+    <div class="label">08 — 改进路线图</div>
     <h2>改进优先级</h2>
     <div class="desc">按"影响面×修复成本"排序，优先处理对安全影响最大且改动集中在一两个文件的。</div>
   </div>
@@ -796,7 +796,7 @@ L40: private static final String secretKey = "{{COS_SECRET_KEY_REDACTED}}";
 <!-- === Tech debt === -->
 <section class="sec">
   <div class="sec-hdr">
-    <div class="label">07 — 总结</div>
+    <div class="label">09 — 技术债务</div>
     <h2>技术债务</h2>
   </div>
   <div class="tdg">
