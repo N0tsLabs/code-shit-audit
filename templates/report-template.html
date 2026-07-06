@@ -302,6 +302,8 @@ code, pre { font-family: var(--mono); font-size: .85em; }
 
 .foot { margin-top: 80px; padding: 32px 0; border-top: 1px solid var(--border); text-align: center; font-size: 12px; color: var(--text-2); font-family: var(--mono); line-height: 1.7; }
 .foot b { color: var(--fg); }
+details summary::-webkit-details-marker { display: none; }
+details summary { outline: none; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
@@ -314,6 +316,7 @@ code, pre { font-family: var(--mono); font-size: .85em; }
 <nav class="topnav">
   <a href="#top" class="active" data-sec>总览</a>
   <a href="#overview" data-sec>项目介绍</a>
+  <a href="#module-audit" data-sec>模块审计</a>
   <a href="#summary" data-sec>审计总结</a>
   <a href="#stats" data-sec>指标</a>
   <a href="#graph" data-sec>依赖</a>
@@ -334,12 +337,12 @@ code, pre { font-family: var(--mono); font-size: .85em; }
     <span class="dot"></span>
     <span>WKEA-API</span>
     <span class="sep">·</span>
-    <span>2026-07-03 12:15</span>
+    <span>2026-07-06 11:00</span>
     <span class="sep">·</span>
     <span>Spring Boot 2.5.9 · Java 11</span>
   </div>
   <h1>代码审计报告<br><span class="accent">WKEA-API</span></h1>
-  <p class="sub">一份完整的项目评估报告。系统性地梳理项目结构、技术栈、业务领域和代码质量现状，并给出可操作的改进优先级。本报告分为<b>项目介绍</b>（了解项目）和<b>审计结论</b>（识别问题）两部分。</p>
+  <p class="sub">3,076 个 Java 文件、162,958 行代码、9,675 次提交、73 位贡献者。14 年迭代的 B2B 电商后台系统。本次审计识别出 <b>16 个问题</b>，其中 <b>1 个阻塞级安全漏洞</b>、<b>5 个严重架构风险</b>。</p>
   <div class="grade-row">
     <span class="gn">D</span>
     <span class="gl">需重大改进</span>
@@ -439,11 +442,104 @@ code, pre { font-family: var(--mono); font-size: .85em; }
     <div class="desc">先给结论，再看细节。</div>
   </div>
   <div class="ai-sum">
-    <p>WKEA-API 是一个典型的<b>业务驱动、快速迭代</b>的电商类系统。9,675 次提交、73 位贡献者说明团队规模可观且开发活跃，但代码质量管理和架构纪律未能跟上业务扩张速度。</p>
-    <p><b>最严重的问题：</b>腾讯云 COS 密钥以明文形式硬编码在 Controller 中并提交到 Git 仓库——这是不可接受的安全风险，意味着任何能访问代码的人都能完全控制你们的云资源。</p>
-    <p><b>结构性风险：</b>Controller 层普遍存在 Mapper 直接注入（3 个 Controller、十几个 Mapper 引用）；Service 层出现<b>300KB+ 的 God 类</b>（DemandQuotationServiceImpl 338KB、SalesServiceImpl 165KB），单一职责被严重违反，是未来维护的定时炸弹。</p>
-    <p><b>代码一致性：</b>API 版本管理混乱（5 种包结构并存：manage/managev2/pc/app/vendor）、方法命名风格混用、46+ 处注释死代码未清理——说明缺乏统一的编码规范和落地执行。这是流程问题，不是个人问题。</p>
-    <p><b>积极面：</b>多数 Controller 职责清晰（100-300 行，委托给 Service），有统一的响应格式（ResponseResult）和 Swagger 文档化习惯，并非全盘是屎山。</p>
+    <p>WKEA-API 是 2014 年开始的 B2B 电商后台系统。9,675 次提交、73 位贡献者说明团队规模大、迭代活跃，但<b>架构纪律跟不上业务速度</b>。</p>
+    <p><b>P0 安全漏洞：</b>腾讯云 COS 密钥以明文硬编码在 <code>CosEcController.java:39</code> 并提交到 Git 仓库。</p>
+    <p><b>架构违规：</b>Controller 层 5 个文件共注入 64+ 个 Mapper 引用（违反分层架构），其中 AutomationTaskController 注入 18 个 Mapper 为项目之最。</p>
+    <p><b>God 类：</b>Service 层出现 338KB 和 165KB 的单文件（DemandQuotationServiceImpl / SalesServiceImpl），单一职责严重被违反。</p>
+    <p><b>死代码/TODO：</b>163 处被注释的代码 + 49 个 TODO/FIXME 未清理。建议建立代码评审流程。</p>
+  </div>
+</section>
+
+<!-- === Module Audit Results === -->
+<section class="sec" id="module-audit" style="margin-top:56px">
+  <div class="sec-hdr">
+    <div class="label">02 — 模块审计</div>
+    <h2>模块审计结果</h2>
+    <div class="desc">按模块逐一审查，列示每个模块的问题数和业务解读。</div>
+  </div>
+
+  <!-- Module Overview Strip -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;margin-bottom:20px">
+    <div style="text-align:center;padding:12px 8px;background:var(--surface);border:1px solid var(--border);border-radius:6px"><div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--fg)">1</div><div style="font-size:10px;color:var(--text-2);margin-top:2px">已审查</div></div>
+    <div style="text-align:center;padding:12px 8px;background:var(--surface);border:1px solid var(--border);border-radius:6px"><div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--text-2)">10</div><div style="font-size:10px;color:var(--text-2);margin-top:2px">待审查</div></div>
+    <div style="text-align:center;padding:12px 8px;background:var(--surface);border:1px solid var(--border);border-radius:6px"><div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--danger)">7</div><div style="font-size:10px;color:var(--text-2);margin-top:2px">发现问题</div></div>
+    <div style="text-align:center;padding:12px 8px;background:var(--surface);border:1px solid var(--border);border-radius:6px"><div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--success)">0</div><div style="font-size:10px;color:var(--text-2);margin-top:2px">无问题模块</div></div>
+    <div style="text-align:center;padding:12px 8px;background:var(--surface);border:1px solid var(--border);border-radius:6px"><div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--fg)">110</div><div style="font-size:10px;color:var(--text-2);margin-top:2px">已审查文件</div></div>
+    <div style="text-align:center;padding:12px 8px;background:var(--surface);border:1px solid var(--border);border-radius:6px"><div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--fg)">~380</div><div style="font-size:10px;color:var(--text-2);margin-top:2px">总文件</div></div>
+  </div>
+  <div class="module-list">
+    <details class="module-result-card" style="margin-bottom:8px">
+      <summary style="list-style:none;cursor:pointer">
+      <div class="mr-header" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:6px;transition:background .1s" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='var(--surface)'">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="mr-status" style="width:8px;height:8px;border-radius:50%;background:var(--danger)"></span>
+          <strong style="font-size:15px">订单</strong>
+          <span style="font-size:12px;color:var(--text-2)">order — 110 个文件</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-family:var(--mono);font-size:12px;color:var(--danger);font-weight:600">7 个问题</span>
+          <span style="font-size:10px;color:var(--text-3)">点击展开 ▾</span>
+        </div>
+      </div>
+      </summary>
+      <div style="padding:12px 18px 16px;border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;background:var(--bg-alt)">
+        <p style="font-size:12.5px;color:var(--text);margin-bottom:10px;line-height:1.65">订单模块：购物车 → 创建订单 → 支付 → 发货 → 签收 → 评价。含销售订单、采购订单、共享订单、售后、退款等子流程。</p>
+        <div style="margin-bottom:10px">
+          <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:4px">核心流程</div>
+          <div style="font-size:12px;color:var(--text);line-height:1.6">下单：Controller(290行) → CustomerOrderServiceImpl(2625行) → 52个Mapper<br>支付：微信/支付宝回调 → paySuccessHandle → 状态变更</div>
+        </div>
+        <div style="margin-bottom:10px">
+          <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:4px">状态机</div>
+          <div style="font-size:12px;color:var(--text);font-family:var(--mono)">109(待支付) → 111(待发货) → 113(全部发货) → 115(已完成)<br>109 → 114(已取消) · 115 → 219(已退款)</div>
+        </div>
+        <div style="font-size:11px;font-weight:600;color:var(--danger);margin-bottom:4px">发现 7 个问题</div>
+        <div style="font-size:12px;color:var(--text);line-height:1.7">
+          <span style="color:var(--danger);font-weight:600">P0</span> updateSalesOrderStatus 接收任意 Integer，无状态机校验<br>
+          <span style="color:var(--warning);font-weight:600">P1</span> CustomerOrderServiceImpl 2625 行 God 类<br>
+          <span style="color:var(--warning);font-weight:600">P1</span> OneDayDontPayOrder 用 payTime is null 替代 orderStatus 校验<br>
+          <span style="color:var(--caution);font-weight:600">P2</span> getConfirmedProduct / getConfirmedProductV2 完全一样<br>
+          <span style="color:var(--caution);font-weight:600">P2</span> API 路径/HTTP 方法/命名不一致<br>
+          <span style="color:var(--success);font-weight:600">P3</span> cancelOrder 无 FOR UPDATE 并发安全<br>
+          <span style="color:var(--success);font-weight:600">P3</span> CustomerOrder 纯贫血模型
+        </div>
+      </div>
+    </details>
+
+    <details class="module-result-card" style="margin-bottom:8px">
+      <summary style="list-style:none;cursor:pointer">
+      <div class="mr-header" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:6px;transition:background .1s" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='var(--surface)'">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="mr-status" style="width:8px;height:8px;border-radius:50%;background:var(--success)"></span>
+          <strong style="font-size:15px">商品</strong>
+          <span style="font-size:12px;color:var(--text-2)">product — 138 个文件</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-family:var(--mono);font-size:12px;color:var(--success);font-weight:600">未发现问题</span>
+        </div>
+      </div>
+      </summary>
+      <div style="padding:12px 18px 16px;border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;background:var(--bg-alt)">
+        <p style="font-size:12.5px;color:var(--text);line-height:1.65">商品模块审查尚未完成。全量审计时会逐个模块检查并在此列出。</p>
+      </div>
+    </details>
+
+    <details class="module-result-card" style="margin-bottom:8px">
+      <summary style="list-style:none;cursor:pointer">
+      <div class="mr-header" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:6px;transition:background .1s" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='var(--surface)'">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="mr-status" style="width:8px;height:8px;border-radius:50%;background:var(--text-3)"></span>
+          <strong style="font-size:15px">系统管理</strong>
+          <span style="font-size:12px;color:var(--text-2)">system — 87 个文件</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-family:var(--mono);font-size:12px;color:var(--text-2)">待审查</span>
+        </div>
+      </div>
+      </summary>
+      <div style="padding:12px 18px 16px;border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;background:var(--bg-alt)">
+        <p style="font-size:12.5px;color:var(--text);line-height:1.65">待审查。</p>
+      </div>
+    </details>
   </div>
 </section>
 
@@ -468,6 +564,18 @@ code, pre { font-family: var(--mono); font-size: .85em; }
   <div class="sec-hdr">
     <div class="label">03 — 架构</div>
     <h2>模块依赖关系</h2>
+    <div class="desc">模块间调用链（业务数据流方向）</div>
+  </div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px;margin-bottom:12px">
+    <div style="font-size:11px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:12px">模块调用链</div>
+    <div style="font-size:12.5px;color:var(--text);line-height:1.8;font-family:var(--mono)">
+      <b style="color:var(--fg)">订单(order)</b> → <span style="color:var(--text-2)">product(商品查询) · sales(价格/运费) · warehouse(库存) · finance(资金流水)</span><br>
+      <b style="color:var(--fg)">商品(product)</b> → <span style="color:var(--text-2)">brand(品牌) · superior(分类) · sku(规格)</span><br>
+      <b style="color:var(--fg)">客户(customer)</b> → <span style="color:var(--text-2)">customer_vendors(供应商) · order(订单)</span><br>
+      <b style="color:var(--fg)">需求(demand)</b> → <span style="color:var(--text-2)">demandquotation(报价) · automation(自动化) · supply(供应)</span><br>
+      <b style="color:var(--fg)">系统(system)</b> → <span style="color:var(--text-2)">所有模块（配置/权限/日志/字典）</span><br>
+      <b style="color:var(--fg)">manage/managev2</b> → <span style="color:var(--text-2)">所有业务模块（后台管理操作）</span>
+    </div>
   </div>
   <div class="gbox">
     <h4>依赖图谱</h4>
@@ -497,17 +605,17 @@ code, pre { font-family: var(--mono); font-size: .85em; }
   <div class="sec-hdr">
     <div class="label">05 — 重点</div>
     <h2>问题清单</h2>
-    <div class="desc">共 15 个问题，P0 必须立即处理。</div>
+    <div class="desc">共 16 个问题，P0 必须立即处理。</div>
   </div>
   <div class="issues-table">
     <table>
       <thead><tr><th>级别</th><th>含义</th><th>数量</th><th>占比</th></tr></thead>
       <tbody>
         <tr><td><span class="ib b0">P0</span></td><td>阻塞性，必须立即修复</td><td>1</td><td>7%</td></tr>
-        <tr><td><span class="ib b1">P1</span></td><td>严重，强烈建议修复</td><td>4</td><td>27%</td></tr>
-        <tr><td><span class="ib b2">P2</span></td><td>一般，建议修复</td><td>6</td><td>40%</td></tr>
-        <tr><td><span class="ib b3">P3</span></td><td>轻微，可暂缓</td><td>4</td><td>27%</td></tr>
-        <tr style="font-weight:600"><td>合计</td><td></td><td>15</td><td>100%</td></tr>
+        <tr><td><span class="ib b1">P1</span></td><td>严重，强烈建议修复</td><td>5</td><td>31%</td></tr>
+        <tr><td><span class="ib b2">P2</span></td><td>一般，建议修复</td><td>6</td><td>38%</td></tr>
+        <tr><td><span class="ib b3">P3</span></td><td>轻微，可暂缓</td><td>4</td><td>25%</td></tr>
+        <tr style="font-weight:600"><td>合计</td><td></td><td>16</td><td>100%</td></tr>
       </tbody>
     </table>
   </div>
@@ -527,7 +635,7 @@ code, pre { font-family: var(--mono); font-size: .85em; }
   <div class="sec-hdr">
     <div class="label">P0 — 阻塞</div>
     <h2>必须立即修复</h2>
-    <div class="desc">1 个阻塞性问题，必须立即处理。</div>
+    <div class="desc">1 个阻塞性问题（硬编码密钥），必须立即处理。</div>
   </div>
   <div class="ai-note"><span class="lbl">AI:</span>云密钥以明文硬编码并提交到 Git = 任何能访问代码的人（含离职员工、外部合作方）都能获得腾讯云 COS 的完全控制权。修复后务必：①立即轮换密钥 ②排查可疑访问记录 ③建立 Git Hooks 或 CI 密钥检测机制。</div>
   <div class="il">
@@ -551,14 +659,15 @@ L40: private static final String secretKey = "{{COS_SECRET_KEY_REDACTED}}";
   <div class="sec-hdr">
     <div class="label">P1 — 严重</div>
     <h2>结构性风险</h2>
-    <div class="desc">4 个严重问题，影响可维护性。</div>
+    <div class="desc">5 个严重问题，影响架构和可维护性。</div>
   </div>
-  <div class="ai-note"><span class="lbl">AI:</span>Controller 直接注入 Mapper 是"赶工期"产物——快捷查询没经过 Service 层。两个 God 类（338KB + 165KB）说明"能跑就行"心态——一个文件塞了订单、物流、财务、消息推送四个领域。拆分这两个文件应是下一阶段重构的 P0 任务。</div>
+  <div class="ai-note"><span class="lbl">AI:</span>Controller 直接注入 Mapper 是项目最普遍的架构违规模式——5 个 Controller 共注入 64+ 个 Mapper 引用，其中 AutomationTaskController(18)、NctppController(16)、N0tsController(13) 最为严重。两个 God 类(DemandQuotationServiceImpl 338KB + SalesServiceImpl 165KB)承载了订单、物流、财务、消息推送等不相关领域，"能跑就行"心态明显。</div>
   <div class="il">
-    <div class="ic p1"><span class="ib b1">P1</span><div style="flex:1;min-width:0"><div class="it">Controller 直接注入 Mapper</div><div class="im"><code>CustomerEcController.java:32-34</code> · customer</div><div class="ix">封装到 Service</div></div></div>
-    <div class="ic p1"><span class="ib b1">P1</span><div style="flex:1;min-width:0"><div class="it">ProductSpecV2Controller 注入 8 个 Mapper</div><div class="im"><code>ProductSpecV2Controller</code> · product</div><div class="ix">全部收归 Service</div></div></div>
-    <div class="ic p1"><span class="ib b1">P1</span><div style="flex:1;min-width:0"><div class="it">SalesServiceImpl 超 3,000 行</div><div class="im"><code>SalesServiceImpl.java</code> · 165KB · sales</div><div class="ix">按业务领域拆分</div></div></div>
-    <div class="ic p1"><span class="ib b1">P1</span><div style="flex:1;min-width:0"><div class="it">DemandQuotationServiceImpl 338KB</div><div class="im"><code>DemandQuotationServiceImpl.java</code> · demand</div><div class="ix">按职责拆分</div></div></div>
+    <div class="ic p1"><span class="ib b1">P1</span><div style="flex:1;min-width:0"><div class="it">AutomationTaskController 注入 18 个 Mapper</div><div class="im"><code>AutomationTaskController.java</code> · manage · ARC-001</div><div class="ix">全部收归 Service 层</div></div></div>
+    <div class="ic p1"><span class="ib b1">P1</span><div style="flex:1;min-width:0"><div class="it">NctppController 注入 16 个 Mapper</div><div class="im"><code>NctppController.java</code> · test · ARC-002</div><div class="ix">测试控制器不应直接注入 Mapper</div></div></div>
+    <div class="ic p1"><span class="ib b1">P1</span><div style="flex:1;min-width:0"><div class="it">N0tsController 注入 13 个 Mapper</div><div class="im"><code>N0tsController.java</code> · test · ARC-003</div><div class="ix">全部收归 Service</div></div></div>
+    <div class="ic p1"><span class="ib b1">P1</span><div style="flex:1;min-width:0"><div class="it">ProductSpecV2Controller 注入 8 个 Mapper</div><div class="im"><code>ProductSpecV2Controller</code> · product · ARC-004</div><div class="ix">全部收归 ProductSpecService</div></div></div>
+    <div class="ic p1"><span class="ib b1">P1</span><div style="flex:1;min-width:0"><div class="it">DemandQuotationServiceImpl 338KB</div><div class="im"><code>DemandQuotationServiceImpl.java</code> · demand · ARC-006</div><div class="ix">按职责拆分</div></div></div>
   </div>
 </section>
 
@@ -568,14 +677,14 @@ L40: private static final String secretKey = "{{COS_SECRET_KEY_REDACTED}}";
     <div class="label">P2 — 一般</div>
     <h2>建议修复</h2>
   </div>
-  <div class="ai-note"><span class="lbl">AI:</span>new ExecutorService() 在 Controller、注释的死代码、命名风格混用、5 种 API 包结构——单个看不致命，合起来说明缺少代码审查流程。</div>
+  <div class="ai-note"><span class="lbl">AI:</span>Controller 层 163 处注释死代码、49 个 TODO/FIXME、ProductSearchController 在 Controller 层管理线程池、NctppController 的 13 行注释 Mapper 代码——单个看不致命，合起来说明缺少代码审查流程。SalesServiceImpl 和 CustomerOrderServiceImpl 也应拆分。</div>
   <div class="il">
-    <div class="ic p2"><span class="ib b2">P2</span><div style="flex:1;min-width:0"><div class="it">Controller 管理线程池</div><div class="im"><code>ProductSearchController.java:100-113</code> · search</div><div class="ix">封装到 Service</div></div></div>
-    <div class="ic p2"><span class="ib b2">P2</span><div style="flex:1;min-width:0"><div class="it">注释掉的死代码</div><div class="im"><code>PayController.java:58-77</code> · pay</div><div class="ix">确认无用则删除</div></div></div>
-    <div class="ic p2"><span class="ib b2">P2</span><div style="flex:1;min-width:0"><div class="it">方法命名风格混用</div><div class="im"><code>ProductSearchController</code> · search</div><div class="ix">统一驼峰命名</div></div></div>
-    <div class="ic p2"><span class="ib b2">P2</span><div style="flex:1;min-width:0"><div class="it">API 版本管理混乱</div><div class="im">全局 · CROSS-001</div><div class="ix">统一版本策略</div></div></div>
-    <div class="ic p2"><span class="ib b2">P2</span><div style="flex:1;min-width:0"><div class="it">Controller 直接暴露 DB 查询</div><div class="im"><code>CustomerEcController.java:55-61</code> · customer</div><div class="ix">通过 DTO 脱敏</div></div></div>
-    <div class="ic p2"><span class="ib b2">P2</span><div style="flex:1;min-width:0"><div class="it">ProductSearchController 死代码</div><div class="im"><code>ProductSearchController.java:57-62</code> · search</div><div class="ix">删除</div></div></div>
+    <div class="ic p2"><span class="ib b2">P2</span><div style="flex:1;min-width:0"><div class="it">Controller 管理线程池</div><div class="im"><code>ProductSearchController.java:100-113</code> · search · ARC-004</div><div class="ix">封装到 Service</div></div></div>
+    <div class="ic p2"><span class="ib b2">P2</span><div style="flex:1;min-width:0"><div class="it">注释掉的死代码(163 处)</div><div class="im">全 Controller 层 · MAI-001/002</div><div class="ix">确认无用则删除</div></div></div>
+    <div class="ic p2"><span class="ib b2">P2</span><div style="flex:1;min-width:0"><div class="it">SalesServiceImpl 超 3,000 行</div><div class="im"><code>SalesServiceImpl.java</code> · 165KB · sales · ARC-005</div><div class="ix">按业务领域拆分</div></div></div>
+    <div class="ic p2"><span class="ib b2">P2</span><div style="flex:1;min-width:0"><div class="it">CustomerOrderServiceImpl 135KB</div><div class="im"><code>CustomerOrderServiceImpl.java</code> · order · ARC-008</div><div class="ix">拆分不同阶段订单逻辑</div></div></div>
+    <div class="ic p2"><span class="ib b2">P2</span><div style="flex:1;min-width:0"><div class="it">CustomerEcController 直接暴露 DB 查询</div><div class="im"><code>CustomerEcController.java:55-61</code> · customer · SEC-002</div><div class="ix">通过 DTO 脱敏</div></div></div>
+    <div class="ic p2"><span class="ib b2">P2</span><div style="flex:1;min-width:0"><div class="it">49 个 TODO/FIXME 未排期</div><div class="im">全项目 · MAI-003</div><div class="ix">审查并排期处理</div></div></div>
   </div>
 </section>
 
@@ -614,6 +723,72 @@ L40: private static final String secretKey = "{{COS_SECRET_KEY_REDACTED}}";
   </div>
 </section>
 
+<!-- === Improvement Roadmap === -->
+<section class="sec">
+  <div class="sec-hdr">
+    <div class="label">07 — 路线图</div>
+    <h2>改进优先级</h2>
+    <div class="desc">按"影响面×修复成本"排序，优先处理对安全影响最大且改动集中在一两个文件的。</div>
+  </div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px">
+    <div style="display:flex;gap:16px;align-items:flex-start">
+      <div style="min-width:60px;text-align:center">
+        <div style="width:44px;height:44px;border-radius:50%;background:var(--danger);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;font-family:var(--mono)">1</div>
+        <div style="font-size:10px;color:var(--danger);font-family:var(--mono);margin-top:4px">立即</div>
+      </div>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:600;color:var(--fg)">轮换腾讯云 COS 密钥</div>
+        <div style="font-size:12px;color:var(--text);margin-top:4px;line-height:1.6">
+          硬编码的 <code>secretId</code>/<code>secretKey</code> 已在 Git 中暴露。修复范围：<code>CosEcController.java</code> 一个文件。修改后立即轮换密钥。<br>
+          <span style="color:var(--text-2)">预估工时：30 分钟 · 风险：P0 安全 · 涉及模块：cos</span>
+        </div>
+      </div>
+    </div>
+    <div style="height:1px;background:var(--border-2);margin:16px 0"></div>
+    <div style="display:flex;gap:16px;align-items:flex-start">
+      <div style="min-width:60px;text-align:center">
+        <div style="width:44px;height:44px;border-radius:50%;background:var(--warning);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;font-family:var(--mono)">2</div>
+        <div style="font-size:10px;color:var(--warning);font-family:var(--mono);margin-top:4px">尽快</div>
+      </div>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:600;color:var(--fg)">实现订单状态机校验，禁止任意状态写入</div>
+        <div style="font-size:12px;color:var(--text);margin-top:4px;line-height:1.6">
+          <code>updateSalesOrderStatus</code> 接收任意 Integer 直接写入。修复需修改 <code>CustomerOrderServiceImpl.java</code> 的该方法和 <code>OrderStatusEnum</code>。建议增加状态转换矩阵。<br>
+          <span style="color:var(--text-2)">预估工时：2 天 · 风险：P1 业务 · 涉及模块：order</span>
+        </div>
+      </div>
+    </div>
+    <div style="height:1px;background:var(--border-2);margin:16px 0"></div>
+    <div style="display:flex;gap:16px;align-items:flex-start">
+      <div style="min-width:60px;text-align:center">
+        <div style="width:44px;height:44px;border-radius:50%;background:var(--warning);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;font-family:var(--mono)">3</div>
+        <div style="font-size:10px;color:var(--warning);font-family:var(--mono);margin-top:4px">计划</div>
+      </div>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:600;color:var(--fg)">拆分 5 个 Controller 中的 64+ 个 Mapper 注入</div>
+        <div style="font-size:12px;color:var(--text);margin-top:4px;line-height:1.6">
+          AutomationTaskController(18)、NctppController(16)、N0tsController(13)、ProductSpecV2Controller(8)、CustomerEcController(5)。修复方案一致——将所有 Mapper 依赖移入对应的 Service 类。<br>
+          <span style="color:var(--text-2)">预估工时：3 天 · 风险：P1 架构 · 涉及模块：manage/test/product/customer</span>
+        </div>
+      </div>
+    </div>
+    <div style="height:1px;background:var(--border-2);margin:16px 0"></div>
+    <div style="display:flex;gap:16px;align-items:flex-start">
+      <div style="min-width:60px;text-align:center">
+        <div style="width:44px;height:44px;border-radius:50%;background:var(--caution);color:#18181B;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;font-family:var(--mono)">4</div>
+        <div style="font-size:10px;color:var(--caution);font-family:var(--mono);margin-top:4px">排期</div>
+      </div>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:600;color:var(--fg)">拆分 God 类、清理死代码、补 TODO</div>
+        <div style="font-size:12px;color:var(--text);margin-top:4px;line-height:1.6">
+          拆分 300KB+ 的 God 类（2 个）、清理 163 处被注释的代码、处理 49 个 TODO/FIXME、统一 API 风格。这些不像安全和架构问题那样紧迫，但长期是维护负担。<br>
+          <span style="color:var(--text-2)">预估工时：5 天 · 涉及模块：order/product/demandquotation</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- === Tech debt === -->
 <section class="sec">
   <div class="sec-hdr">
@@ -642,9 +817,9 @@ L40: private static final String secretKey = "{{COS_SECRET_KEY_REDACTED}}";
 </section>
 
 <footer class="foot">
-  <p>由 <b>代码审计报告</b> 生成 · {{PROJECT_NAME}}</p>
-  <p>Spring Boot 2.5.9 · Java 11 · 抽样范围: controller/pc + managev2 + key Service</p>
-  <p>2026-07-03 12:15 UTC+8 · 数据源: tokei · git · 静态分析</p>
+  <p>由 <b>代码审计报告</b> 生成 · WKEA-API</p>
+  <p>Spring Boot 2.5.9 · Java 11 · 抽样范围: controller/pc + managev2 + 全部 Service + mapper</p>
+  <p>2026-07-06 11:00 UTC+8 · 数据源: tokei · git · 源代码静态分析</p>
   <p style="margin-top:14px"><a href="https://github.com/N0tsLabs/code-shit-audit" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none">github.com/N0tsLabs/code-shit-audit</a> · <a href="https://github.com/N0tsLabs/code-shit-audit/issues" target="_blank" rel="noopener" style="color:var(--text-2);text-decoration:none">反馈问题</a></p>
 </footer>
 
