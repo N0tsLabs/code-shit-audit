@@ -68,17 +68,17 @@ body {
 code, pre { font-family: var(--mono); font-size: .85em; }
 
 .topnav {
-  position: fixed; top: 16px; left: 50%;
+  position: fixed; top: 20px; left: 50%;
   transform: translateX(-50%);
   z-index: 100;
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.78);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 4px;
+  border-radius: 100px;
+  padding: 5px;
   display: flex; gap: 2px; align-items: center;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06);
   font-size: 13px;
   font-weight: 500;
   max-width: calc(100vw - 24px);
@@ -97,7 +97,8 @@ code, pre { font-family: var(--mono); font-size: .85em; }
   transition: all .15s var(--ease);
 }
 .topnav a:hover { color: var(--fg); background: var(--surface-2); }
-.topnav a.active { color: var(--fg); background: var(--surface-2); }
+.topnav a.active { color: var(--accent); background: var(--surface-2); font-weight: 600; }
+.topnav.scrolled { background: rgba(255, 255, 255, 0.92); box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.08); }
 
 .tb {
   position: fixed; top: 16px; right: 16px; z-index: 200;
@@ -129,6 +130,7 @@ code, pre { font-family: var(--mono); font-size: .85em; }
 .hero .meta-line .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
 .hero .meta-line .sep { color: var(--text-3); }
 .hero h1 { font-size: 40px; font-weight: 700; letter-spacing: -1.5px; line-height: 1.1; color: var(--fg); margin: 0 0 16px 0; }
+.hero h1 .accent { color: var(--text-2); font-weight: 500; }
 .hero h1 .accent { color: var(--text-2); font-weight: 500; }
 .hero .sub {
   font-size: 17px; color: var(--text);
@@ -874,6 +876,7 @@ else runCounters();
 
 const navItems = document.querySelectorAll('[data-sec]');
 const sections = document.querySelectorAll('.sec[id], .overview[id], #top');
+const topnav = document.querySelector('.topnav');
 let activeId = 'top';
 function onScroll() {
   const y = window.scrollY + 100;
@@ -882,6 +885,10 @@ function onScroll() {
   if (cur !== activeId) {
     activeId = cur;
     navItems.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + cur));
+  }
+  if (topnav) {
+    if (window.scrollY > 80) topnav.classList.add('scrolled');
+    else topnav.classList.remove('scrolled');
   }
 }
 window.addEventListener('scroll', onScroll, {passive: true});
