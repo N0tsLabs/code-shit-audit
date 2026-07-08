@@ -145,13 +145,36 @@ issues/
 
 ---
 
-### Phase 4：汇总合成
+### Phase 4：数据汇总 + 脚本渲染
 
 主 agent 收集所有问题清单，执行：
 1. **去重**
 2. **按 P0-P3 排序**
 3. **归组到模块**
-4. **按 `templates/report-template.html` 渲染报告**
+4. **运行渲染脚本生成 HTML**
+
+**Phase 4 的正确流程：**
+
+```
+Phase 1 agent 产出 JSON  →  主 agent 汇总  →  scripts/render-report.ts  →  report.html
+```
+
+**主 agent 只需确保数据完整，然后执行：**
+
+```bash
+bun run scripts/render-report.ts audit/{timestamp}/
+```
+
+**脚本自动完成：**
+- 读取模板 CSS/JS（`templates/report-template.html`）
+- 读取所有 JSON 数据（`issues/module/*.json` + `business/*.md` + `metadata.json` + `module-list.json`）
+- 渲染 14 个章节（Hero、项目介绍、KPI、审计总结、模块审计、依赖、贡献者、问题表、P0-P3、业务领域、技术债务、Footer）
+- 注入 Chart.js 数据、D3 force graph、主题切换 JS
+- 写出 `report.html`
+
+**如果脚本报错（exit code ≠ 0），说明数据文件格式不对或缺失。agent 必须修复数据后重新运行，直到脚本成功退出。**
+
+脚本路径：`{skill_dir}/scripts/render-report.ts`。agent 在执行时通过 `bun run` 调用它，无需复制到项目目录。
 
 ---
 
