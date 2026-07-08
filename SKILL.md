@@ -287,7 +287,6 @@ bun run scripts/render-report.ts audit/{timestamp}/
 | **security** | 密钥、注入、权限、日志暴露 |
 | **maintainability** | 超长文件、重复代码、命名、TODO/FIXME |
 | **design** | 贫血模型、API 设计一致性、模式选型合理度 |
-| **tui-focus** | **（TUI 项目专用）** 焦点生命周期：打开弹窗→焦点保存→关闭弹窗→焦点归还。检查所有 `focus()`/`blur()` 调用点，验证 dismissTop/clear/push 流程中 savedFocus 的存取值是否正确，是否存在 pop→shift 类的顺序错误 |
 
 ## 不依赖外部工具
 
