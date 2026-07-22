@@ -288,6 +288,22 @@ bun run scripts/render-report.ts audit/{timestamp}/
 | **maintainability** | 超长文件、重复代码、命名、TODO/FIXME |
 | **design** | 贫血模型、API 设计一致性、模式选型合理度 |
 
-## 不依赖外部工具
+## 工具集成（Phase 0.5）
 
-本 skill 只使用 agent 工具内置的能力（glob、grep、read、write）。不依赖任何第三方 CLI 工具。
+Phase 0 完成后，自动检测语言并安装/运行对应工具，无需用户手动操作：
+
+| 检测到 | 安装命令 | 运行命令 | 收集内容 |
+|--------|---------|---------|---------|
+| `*.py` + `pyproject.toml` | `uv pip install ruff vulture` 或 `pip install ruff vulture` | `ruff check . && vulture .` | 风格问题、死代码、未使用 import |
+| `*.ts`/`*.js` + `package.json` | `npm install`（如果 node_modules 不存在） | `npx eslint . && npx prettier --check .` | 风格问题、格式化 |
+| `*.go` + `go.mod` | 无需（Go 自带） | `golangci-lint run` | 全量 lint |
+| `*.rs` + `Cargo.toml` | 无需（Rust 自带） | `cargo clippy` | 全量 clippy |
+| `*.sh` | 无需 | `shellcheck **/*.sh` 或 `bash -n **/*.sh` | 语法错误 |
+| `.github/workflows/*.yml` | 无需 | 解析 CI 配置，生成等价的本地测试命令 | 如果 CI 有测试但本地没跑，标为风险 |
+
+**执行流程：**
+1. 读 `scripts/scan.sh` 了解每种语言的检测命令
+2. 按检测到的语言选择对应扫描
+3. 如果工具未安装，先 `brew install` / `pip install` / `npm install`
+4. 运行扫描，将输出保存到 `{timestamp}/tools/` 目录
+5. Phase 4 汇总时将工具发现与 AI 发现合并到报告
